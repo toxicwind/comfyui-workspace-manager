@@ -55,7 +55,6 @@ export default function InstallMissingModelsButton({}: Props) {
       }
     };
     // const graphJson = app.graph.serialize();
-    // console.log(graphJson);
     // fetch("/model_manager/find_missing_models", {
     //   method: "POST",
     //   body: JSON.stringify({

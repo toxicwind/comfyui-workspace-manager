@@ -71,7 +71,6 @@ export default function App() {
   const saveCurWorkflow = useCallback(async () => {
     if (curFlowID.current) {
       const graphJson = JSON.stringify(app.graph.serialize());
-      console.log("App.saveCurWorkflow", graphJson);
       await Promise.all([
         workflowsTable?.updateFlow(curFlowID.current, {
           json: graphJson,
@@ -107,7 +106,6 @@ export default function App() {
         const flow = await workflowsTable?.get(curFlowID.current);
         if (flow && flow.json) {
           await app.loadGraphData(JSON.parse(flow.json));
-          console.log("discardUnsavedChanges", JSON.parse(flow.json));
         }
       }
     }
@@ -191,11 +189,6 @@ export default function App() {
       console.error("error parsing json", e);
     }
     const equal = JSON.stringify(graphJson) === JSON.stringify(lastSaved);
-    // compareJsonDiff({
-    //   old: lastSaved,
-    //   new: graphJson,
-    // });
-    console.log("checkIsDirty", !equal);
     return !equal;
   };
 
@@ -453,7 +446,6 @@ export default function App() {
           name: fileInput.files[0].name,
           json: JSON.stringify(defaultGraph),
         });
-        console.log("created flow", flow);
         flow && setCurFlowIDAndName(flow);
       }
     };

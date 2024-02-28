@@ -24,7 +24,6 @@ export namespace TwowaySyncAPI {
     const newParentFolderAbs = await genAbsPathByRelPath(
       newParentFolderRelPath,
     );
-    console.log("🥳moveWorkflow", absPath, newParentFolderAbs);
     try {
       const response = await fetch("/workspace/file/move", {
         method: "POST",
@@ -78,7 +77,6 @@ export namespace TwowaySyncAPI {
     { parentFolderID, name }: Pick<Workflow, "name" | "parentFolderID">,
     newName: string,
   ) {
-    console.log("🥳renameWorkflow", parentFolderID, name, newName);
     const myWorkflowsDir =
       await userSettingsTable?.getSetting("myWorkflowsDir");
     const absPath = sanitizeAbsPath(
@@ -129,7 +127,6 @@ export namespace TwowaySyncAPI {
         }),
       });
       const result = (await response.json()) as DuplicatesResponse;
-      console.log("scanMyWorkflowsDupId", result);
       return true;
     } catch (error) {
       console.error("Error deleting file:", error);
@@ -227,7 +224,6 @@ export namespace TwowaySyncAPI {
           filePath: `${absPath}/${name}.json`,
           name: result.name,
         }));
-      console.log("createWorkflowFile results", result);
       return result;
     } catch (error) {
       console.error(`Error creating file <${id}> at "${absPath}"`, error);
@@ -299,7 +295,6 @@ export type ScanLocalFolder = {
 export async function scanLocalFiles(
   path: string,
 ): Promise<Array<ScanLocalFile | ScanLocalFolder>> {
-  console.log("scanLocalFiles api", path);
   try {
     const response = await fetch("/workspace/scan_my_workflows_files", {
       method: "POST",

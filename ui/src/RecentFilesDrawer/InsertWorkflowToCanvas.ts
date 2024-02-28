@@ -77,7 +77,7 @@ export function insertWorkflowToCanvas3(json: string, insertPos?: number[]) {
     if (!newnode) {
       // missing custom node type
       if (LiteGraph.debug) {
-        console.log("Node not found or has errors: " + new_node_data.type);
+        console.error("Node not found or has errors: " + new_node_data.type);
       }
       //in case of error we create a replacement node to avoid losing info
       newnode = new LGraphNode();
