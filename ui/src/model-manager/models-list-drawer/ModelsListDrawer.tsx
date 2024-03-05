@@ -40,15 +40,13 @@ export default function ModelsListDrawer({ onClose }: Props) {
   useEffect(() => {
     getDbModels();
     async function getDbModels() {
-      const models = await indexdb.models.toArray();
-      setModelsListWithDBData(
-        modelsList.map((item) => ({
+      const models = await Promise.all(
+        modelsList.map(async (item) => ({
           ...item,
-          db: models.find(
-            (model) => model.id === item.model_name + "@" + item.model_type,
-          ),
+          db: await indexdb.models.get(item.model_name + "@" + item.model_type),
         })),
       );
+      setModelsListWithDBData(models);
     }
   }, [modelsList]);
 
