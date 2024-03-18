@@ -19,6 +19,9 @@ import { SharedTopbarButton } from "../share/SharedTopbarButton";
 import VersionNameTopbar from "./VersionNameTopbar";
 import { userSettingsTable, workflowsTable } from "../db-tables/WorkspaceDB";
 import { TOPBAR_BUTTON_HEIGHT } from "../const";
+const ModelManagerTopbar = lazy(
+  () => import("../model-manager/topbar/ModelManagerTopbar"),
+);
 import SpotlightSearch from "../components/SpotlightSearch";
 
 interface Props {
