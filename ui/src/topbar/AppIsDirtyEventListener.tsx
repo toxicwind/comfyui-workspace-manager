@@ -29,24 +29,6 @@ export default function AppIsDirtyEventListener() {
           break;
       }
     };
-    const originalOnAfterChange = app.canvas.onAfterChange;
-    app.graph.onAfterChange = function () {
-      // Call the original onAfterChange method
-      originalOnAfterChange?.apply(this, arguments);
-      onIsDirty();
-    };
-
-    const originalOnConfigure = app.graph.onConfigure;
-    app.graph.onConfigure = function () {
-      originalOnConfigure?.apply(this, arguments);
-
-      if (isFirstConfigureCall) {
-        isFirstConfigureCall = false;
-        return;
-      }
-      // Call the original onConfigure method
-      onIsDirty();
-    };
 
     document.addEventListener("click", (e) => {
       if (
