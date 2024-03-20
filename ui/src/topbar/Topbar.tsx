@@ -22,7 +22,7 @@ import { TOPBAR_BUTTON_HEIGHT } from "../const";
 const ModelManagerTopbar = lazy(
   () => import("../model-manager/topbar/ModelManagerTopbar"),
 );
-import SpotlightSearch from "../components/SpotlightSearch";
+const SpotlightSearch = lazy(() => import("../components/SpotlightSearch"));
 
 interface Props {
   curFlowName: string | null;
