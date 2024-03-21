@@ -1,17 +1,29 @@
 import { createContext } from "react";
-import { Route } from "./utils";
-import { Folder, Workflow } from "./types/dbTypes";
+import { Folder, Workflow, WorkflowVersion } from "./types/dbTypes";
+import { WorkspaceRoute } from "./types/types";
+export type JsonDiff = {
+  old: Object;
+  new: Object;
+} | null;
 
 export const WorkspaceContext = createContext<{
   curFlowID: string | null;
   onDuplicateWorkflow?: (flowID: string, newFlowName?: string) => void;
-  loadWorkflowID: (id: string | null, forceLoad?: boolean) => void;
+  loadWorkflowID: (
+    id: string | null,
+    versionID?: string | null,
+    forceLoad?: boolean,
+  ) => void;
+  setIsDirty: (dirty: boolean) => void;
   saveCurWorkflow: () => void;
   discardUnsavedChanges: () => Promise<void>;
   isDirty: boolean;
   loadNewWorkflow: (input?: { json: string; name?: string }) => void;
   loadFilePath: (path: string, overwriteCurrent?: boolean) => void;
-  setRoute: (route: Route) => void;
+  setRoute: (route: WorkspaceRoute) => void;
+  route: WorkspaceRoute;
+  curVersion: WorkflowVersion | null;
+  setCurVersion: (version: WorkflowVersion | null) => void;
 }>({
   curFlowID: null,
   loadWorkflowID: () => {},
@@ -21,6 +33,10 @@ export const WorkspaceContext = createContext<{
   loadNewWorkflow: () => {},
   loadFilePath: () => {},
   setRoute: () => {},
+  route: "root",
+  curVersion: null,
+  setIsDirty: () => {},
+  setCurVersion: () => {},
 });
 
 export const RecentFilesContext = createContext<{

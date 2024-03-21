@@ -24,6 +24,8 @@ import {
   Input,
   Tooltip,
   DarkMode,
+  Tag,
+  HStack,
 } from "@chakra-ui/react";
 import {
   IconArrowBackUpDouble,
@@ -43,18 +45,26 @@ import HoverMenu from "./HoverMenu";
 const ShareDialog = lazy(() => import("../share/ShareDialog"));
 // @ts-ignore
 import { app } from "/scripts/app.js";
+import { TOPBAR_BUTTON_HEIGHT } from "../const";
 
 export default function DropdownTitle() {
-  const { curFlowID, loadWorkflowID, discardUnsavedChanges, saveCurWorkflow } =
-    useContext(WorkspaceContext);
+  const {
+    curFlowID,
+    loadWorkflowID,
+    discardUnsavedChanges,
+    saveCurWorkflow,
+    setRoute,
+    route,
+  } = useContext(WorkspaceContext);
 
   const [isOpenNewVersion, setIsOpenNewVersion] = useState(false);
-  const [isOpenNewName, setIsOpenNewName] = useState(false);
-  const [isVersionHistoryOpen, setIsVersionHistoryOpen] = useState(false);
   const [newFlowName, setNewFlowName] = useState("");
   const [submitError, setSubmitError] = useState("");
   const [workflow, setWorkflow] = useState<Workflow>();
-  const [saveShortcut, setSaveShortcut] = useState("");
+  const [saveShortcut, setSaveShortcut] = useState({
+    save: "",
+    saveAs: "",
+  });
   const [isShareOpen, setIsShareOpen] = useState(false);
 
   useEffect(() => {
@@ -65,7 +75,7 @@ export default function DropdownTitle() {
       });
     }
     userSettingsTable?.getSetting("shortcuts").then((res) => {
-      setSaveShortcut(res?.save);
+      setSaveShortcut(res);
     });
   }, [curFlowID]);
 
@@ -88,33 +98,39 @@ export default function DropdownTitle() {
       parentFolderID: workflow?.parentFolderID,
     });
 
-    flow && (await loadWorkflowID(flow.id, true));
+    flow && (await loadWorkflowID(flow.id, null, true));
     handleOnCloseModal();
   };
 
   const handleOnCloseModal = () => {
-    setIsOpenNewName(false);
+    setRoute("root");
   };
 
   const handleDownload = useCallback(async () => {
-    const json_data = curFlowID ? await workflowsTable?.get(curFlowID) : null;
-
-    if (!json_data) {
-      alert("Workspace does not exist");
+    const curWorkflow = workflowsTable?.curWorkflow;
+    if (!curWorkflow) {
+      alert("No current workflow!");
       return;
     }
-
-    const blob = new Blob([json_data.json], { type: "application/json" });
+    const graph = app.graph.serialize();
+    const json = JSON.stringify(graph);
+    const blob = new Blob([json], { type: "application/json" });
     const url = URL.createObjectURL(blob);
 
     const a = document.createElement("a");
     a.href = url;
-    a.download = `${json_data.name}.json`;
+    a.download = `${curWorkflow.name}.json`;
     document.body.appendChild(a);
     a.click();
     document.body.removeChild(a);
     URL.revokeObjectURL(url);
   }, [curFlowID]);
+
+  const handleDownloadSpaceJson = useCallback(async () => {
+    console.log("app.graph", app.graph);
+    const graph = app.graph.serialize();
+    console.log("graph serialize", graph);
+  }, []);
 
   return (
     <>
@@ -123,11 +139,11 @@ export default function DropdownTitle() {
           <DarkMode>
             <Button
               px={1}
-              height={"29px"}
+              height={TOPBAR_BUTTON_HEIGHT + "px"}
               aria-label="menu"
               size={"sm"}
-              colorScheme="gray"
-              backgroundColor={"gray.700"}
+              // backgroundColor={"#4a4d6b"}
+              backgroundColor={"#434554"}
             >
               File
               <IconChevronDown size={20} />
@@ -141,20 +157,21 @@ export default function DropdownTitle() {
                 onClick={saveCurWorkflow}
                 icon={<IconDeviceFloppy size={20} />}
                 iconSpacing={1}
-                command={saveShortcut}
+                command={saveShortcut.save}
               >
                 Save
               </MenuItem>
-              <Tooltip label="Revert workflow to your last saved version. You will lose all changes made since your last save.">
-                <MenuItem
-                  onClick={discardUnsavedChanges}
-                  icon={<IconArrowBackUpDouble size={20} />}
-                  iconSpacing={1}
-                  isDisabled={workflow?.lastSavedJson == null}
-                >
-                  Discard unsaved changes
-                </MenuItem>
-              </Tooltip>
+              {!userSettingsTable?.autoSave && (
+                <Tooltip label="Revert workflow to your last saved version. You will lose all changes made since your last save.">
+                  <MenuItem
+                    onClick={discardUnsavedChanges}
+                    icon={<IconArrowBackUpDouble size={20} />}
+                    iconSpacing={1}
+                  >
+                    Discard unsaved changes
+                  </MenuItem>
+                </Tooltip>
+              )}
               <MenuItem
                 onClick={handleDownload}
                 icon={<IconDownload size={20} />}
@@ -162,10 +179,18 @@ export default function DropdownTitle() {
               >
                 Download
               </MenuItem>
+              {/* <MenuItem
+                onClick={handleDownloadSpaceJson}
+                icon={<IconDownload size={20} />}
+                iconSpacing={1}
+              >
+                Download .space.json
+              </MenuItem> */}
               <MenuItem
-                onClick={() => setIsOpenNewName(true)}
+                onClick={() => setRoute("saveAsModal")}
                 icon={<IconDeviceFloppy size={20} />}
                 iconSpacing={1}
+                command={saveShortcut.saveAs}
               >
                 Save As
               </MenuItem>
@@ -177,28 +202,31 @@ export default function DropdownTitle() {
                 Create Version
               </MenuItem>
               <MenuItem
-                onClick={() => setIsVersionHistoryOpen(true)}
+                onClick={() => setRoute("versionHistory")}
                 icon={<IconHistory size={20} />}
                 iconSpacing={1}
               >
                 Versions History
               </MenuItem>
-              {/* <MenuItem
+              <MenuItem
                 onClick={() => setIsShareOpen(true)}
                 icon={<IconShare2 size={20} />}
                 iconSpacing={1}
+                alignItems={"center"}
               >
-                Share
-              </MenuItem> */}
+                <HStack>
+                  <p>Share</p> <Tag size={"sm"}>🧪🧪beta</Tag>
+                </HStack>
+              </MenuItem>
             </MenuList>
           </Menu>
         }
       />
       {isShareOpen && <ShareDialog onClose={() => setIsShareOpen(false)} />}
-      {isVersionHistoryOpen && (
-        <VersionHistoryDrawer onClose={() => setIsVersionHistoryOpen(false)} />
+      {route == "versionHistory" && (
+        <VersionHistoryDrawer onClose={() => setRoute("root")} />
       )}
-      {isOpenNewName && (
+      {route === "saveAsModal" && (
         <Modal isOpen={true} onClose={handleOnCloseModal}>
           <ModalOverlay />
           <ModalContent>

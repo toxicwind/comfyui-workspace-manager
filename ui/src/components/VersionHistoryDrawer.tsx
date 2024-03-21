@@ -15,6 +15,8 @@ import {
   Tab,
   TabPanel,
   useToast,
+  HStack,
+  Tag,
 } from "@chakra-ui/react";
 import { IconX } from "@tabler/icons-react";
 import {
@@ -32,7 +34,8 @@ import DeleteConfirm from "./DeleteConfirm";
 
 export function VersionHistoryDrawer({ onClose }: { onClose: () => void }) {
   const toast = useToast();
-  const { curFlowID, isDirty } = useContext(WorkspaceContext);
+  const { curFlowID, isDirty, loadWorkflowID, curVersion } =
+    useContext(WorkspaceContext);
   const [active, setActive] = useState(0); // 0: version、1: changelog
   const [selectedVersion, setSelectedVersion] = useState<string | null>(null);
   const [changelogs, setChangelogs] = useState<Changelog[]>([]);
@@ -43,7 +46,7 @@ export function VersionHistoryDrawer({ onClose }: { onClose: () => void }) {
     const changelogs = await changelogsTable?.listByWorkflowID(flowId);
     setChangelogs(changelogs ?? []);
     const selectedChangelog = changelogs?.filter(
-      (c) => c.json === workflow?.lastSavedJson,
+      (c) => c.json === workflow?.json,
     );
     const selectedChangelogID = selectedChangelog?.[0]?.id;
     selectedChangelogID && setSelectedVersion(selectedChangelogID);
@@ -53,11 +56,6 @@ export function VersionHistoryDrawer({ onClose }: { onClose: () => void }) {
     const vers =
       (await workflowVersionsTable?.listByWorkflowID(curFlowID!)) ?? [];
     setVersions(vers);
-
-    const graphJson = JSON.stringify(app.graph.serialize());
-    const selectedVer = vers?.filter((c) => c.json === graphJson);
-    const selectedVerID = selectedVer?.[0]?.id;
-    selectedVerID && setSelectedVersion(selectedVerID);
   };
 
   const onDelete = (id: string) => {
@@ -86,7 +84,7 @@ export function VersionHistoryDrawer({ onClose }: { onClose: () => void }) {
 
   return (
     <Card
-      width={400}
+      width={430}
       height={"100vh"}
       gap={0}
       position={"fixed"}
@@ -107,7 +105,12 @@ export function VersionHistoryDrawer({ onClose }: { onClose: () => void }) {
         </Flex>
       </CardHeader>
       <CardBody overflowY={"auto"} gap={0}>
-        <Tabs isFitted variant="enclosed" onChange={setActive}>
+        <Tabs
+          isFitted
+          variant="enclosed"
+          onChange={setActive}
+          colorScheme="teal"
+        >
           <TabList mb="1em">
             <Tab>Versions</Tab>
             <Tab>Change History</Tab>
@@ -123,7 +126,7 @@ export function VersionHistoryDrawer({ onClose }: { onClose: () => void }) {
                       mb={1}
                       justify={"space-between"}
                       backgroundColor={
-                        version.id === selectedVersion ? "teal.300" : undefined
+                        version.id === curVersion?.id ? "teal.300" : undefined
                       }
                       borderRadius={4}
                     >
@@ -146,16 +149,7 @@ export function VersionHistoryDrawer({ onClose }: { onClose: () => void }) {
                               return;
                             }
                             app.loadGraphData(JSON.parse(version.json));
-                            workflowsTable?.updateFlow(curFlowID!, {
-                              lastSavedJson: version.json,
-                              json: version.json,
-                            });
-                            toast({
-                              title: `Switched to version "${version.name}"`,
-                              status: "success",
-                              duration: 3000,
-                              isClosable: true,
-                            });
+                            loadWorkflowID(curFlowID!, version.id);
                             onClose();
                           }}
                         >
@@ -178,27 +172,34 @@ export function VersionHistoryDrawer({ onClose }: { onClose: () => void }) {
               <Stack divider={<StackDivider />} spacing={2}>
                 {changelogs?.map((c) => {
                   return (
-                    <Button
-                      key={c.id}
-                      size={"sm"}
-                      variant={"ghost"}
-                      onClick={() => {
-                        if (isDirty) {
-                          alert(
-                            "You have unsaved changes, please save or discard your changes to proceed switching version, in case losing your changes.",
-                          );
-                          return;
-                        }
-                        app.loadGraphData(JSON.parse(c.json));
-                        workflowsTable?.updateFlow(curFlowID!, {
-                          lastSavedJson: c.json,
-                        });
-                        onClose();
-                      }}
-                      isActive={c.id === selectedVersion}
-                    >
-                      Saved at {formatTimestamp(c.createTime, true)}
-                    </Button>
+                    <HStack key={c.id} justifyContent={"space-between"}>
+                      <Button
+                        key={c.id}
+                        size={"sm"}
+                        variant={"ghost"}
+                        onClick={() => {
+                          if (isDirty) {
+                            alert(
+                              "You have unsaved changes, please save or discard your changes to proceed switching version, in case losing your changes.",
+                            );
+                            return;
+                          }
+                          app.loadGraphData(JSON.parse(c.json));
+                          workflowsTable?.updateFlow(curFlowID!, {
+                            json: c.json,
+                          });
+                          onClose();
+                        }}
+                        isActive={c.id === selectedVersion}
+                      >
+                        Saved at {new Date(c.createTime).toLocaleString()}
+                      </Button>
+                      {c.isAutoSave ? (
+                        <Tag colorScheme="teal" size={"sm"}>
+                          Auto save
+                        </Tag>
+                      ) : null}
+                    </HStack>
                   );
                 })}
               </Stack>

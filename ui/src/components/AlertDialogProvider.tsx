@@ -26,9 +26,12 @@ interface DialogButton {
 
 interface DialogContextType {
   showDialog: (
-    message: string,
-    buttons: (DialogButton | null)[],
-    hideCloseIcon?: boolean,
+    message: string | React.ReactNode,
+    buttons?: (DialogButton | null)[],
+    options?: {
+      hideCloseIcon?: boolean;
+      closeOnOverlayClick?: boolean;
+    },
   ) => void;
 }
 
@@ -46,17 +49,19 @@ export const AlertDialogProvider: React.FC<{ children: ReactNode }> = ({
   children,
 }) => {
   const [isOpen, setIsOpen] = useState(false);
-  const [message, setMessage] = useState("");
+  const [message, setMessage] = useState<string | React.ReactNode>("");
   const [buttons, setButtons] = useState<(DialogButton | null)[]>([]);
   const [hideCloseIcon, setHideCloseIcon] = useState(false);
+  const [closeOnOverlayClick, setCloseOnOverlayClick] = useState(true);
   const cancelRef = React.useRef<HTMLButtonElement>(null);
 
   const showDialog: DialogContextType["showDialog"] = useCallback(
-    (message, buttons, hideCloseIcon = false) => {
+    (message, buttons, options) => {
       setMessage(message);
-      setButtons(buttons);
+      setButtons(buttons ?? []);
       setIsOpen(true);
-      setHideCloseIcon(hideCloseIcon);
+      setHideCloseIcon(options?.hideCloseIcon ?? false);
+      setCloseOnOverlayClick(options?.closeOnOverlayClick ?? true);
     },
     [],
   );
@@ -73,7 +78,8 @@ export const AlertDialogProvider: React.FC<{ children: ReactNode }> = ({
           isOpen={isOpen}
           leastDestructiveRef={cancelRef}
           onClose={handleClose}
-          size={"lg"}
+          size={"xl"}
+          closeOnOverlayClick={closeOnOverlayClick}
         >
           <DarkMode>
             <AlertDialogOverlay>

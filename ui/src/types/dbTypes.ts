@@ -1,3 +1,5 @@
+import type { MODEL_TYPE } from "../model-manager/install-models/util/modelTypes";
+
 export interface SortableItem {
   name: string;
   updateTime: number;
@@ -6,16 +8,19 @@ export interface SortableItem {
 export interface Workflow extends SortableItem {
   id: string;
   json: string;
-  lastSavedJson?: string;
+  lastSavedJson?: string; // TODO will be deprecated
   name: string;
   createTime: number;
   filePath?: string;
+  privacy?: WorkflowPrivacy;
   tags?: string[];
-  parentFolderID?: string;
-  mediaIDs?: string[];
+  parentFolderID?: string | null; //TODO remove undefined, use null only
+  mediaIDs?: string[]; // TODO will be deprecated
   coverMediaPath?: string;
-  cloudID?: string;
-  cloudURL?: string;
+  cloudID?: string; // TODO will be deprecated
+  cloudOrigin?: string;
+  saveLock?: boolean;
+  latestImage?: string;
 }
 
 export interface TableBaseModel {
@@ -41,6 +46,7 @@ export type LocalCache = {
 export type Model = {
   id: string;
   fileName: string;
+  modelName: string;
   fileFolder: string;
   fileHash: string;
   civitModelID: string;
@@ -59,24 +65,30 @@ export type WorkflowVersion = {
   json: string;
   createTime: number;
   cloudID?: string;
-  cloudURL?: string;
+  cloudOrigin?: string;
+  authorID?: string;
   nodeDefs?: string; //for cloud workflow version
 };
+
+export enum EShortcutKeys {
+  SAVE = "save",
+  SAVE_AS = "saveAs",
+}
 
 export type UserSettings = {
   id: string;
   myWorkflowsDir: string;
   topBarStyle: PanelPosition;
   modelManagerTopBarStyle: ModelManagerPosition;
-  shortcuts: {
-    save: string;
-  };
+  shortcuts: Record<EShortcutKeys, string>;
   autoSave?: boolean;
   twoWaySync?: boolean;
   foldersOnTop?: boolean;
   showNsfwModelThumbnail?: boolean;
   cloudHost: string;
   overwriteCurWorkflowWhenDroppingFileToCanvas: boolean;
+  defaultFolders: Record<MODEL_TYPE, string>;
+  maximumChangelogNumber: number;
 };
 
 export interface PanelPosition {
@@ -98,11 +110,13 @@ export type Changelog = {
   workflowID: string;
   createTime: number;
   json: string;
+  isAutoSave?: boolean;
 };
 
 export type Media = {
   id: string;
   workflowID: string;
+  workflowJSON?: string;
   createTime: number;
   localPath: string;
   format: string;

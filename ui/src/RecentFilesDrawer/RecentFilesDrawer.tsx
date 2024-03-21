@@ -28,12 +28,11 @@ import {
 } from "@tabler/icons-react";
 import { RecentFilesContext, WorkspaceContext } from "../WorkspaceContext";
 import RecentFilesDrawerMenu from "./RecentFilesDrawerMenu";
-import { sortFileItem } from "../utils";
+import { insertWorkflowToCanvas, sortFileItem } from "../utils";
 import MultipleSelectionOperation from "./MultipleSelectionOperation";
 import { ESortTypes, sortTypeLocalStorageKey } from "./types";
 // @ts-expect-error ComfyUI import
 import { app } from "/scripts/app.js";
-import { insertWorkflowToCanvas3 } from "./InsertWorkflowToCanvas";
 import { useDebounce } from "../customHooks/useDebounce";
 import SearchInput from "../components/SearchInput";
 import { openWorkflowsFolder } from "../Api";
@@ -71,11 +70,9 @@ export default function RecentFilesDrawer({ onClose, onClickNewFlow }: Props) {
   );
 
   const loadLatestWorkflows = async () => {
-    const all = (await workflowsTable?.listFolderContent()) ?? [];
-    aloneFlowsAndFoldersRef.current = all;
-    await workflowsTable?.listAll().then((list) => {
-      allFlowsRef.current = list;
-    });
+    aloneFlowsAndFoldersRef.current =
+      (await workflowsTable?.listFolderContent()) ?? [];
+    allFlowsRef.current = (await workflowsTable?.listAll()) ?? [];
     filterFlows();
     setRefreshFolderStamp(Date.now());
   };
@@ -135,7 +132,7 @@ export default function RecentFilesDrawer({ onClose, onClickNewFlow }: Props) {
         const flow = await workflowsTable?.get(draggingWorkflowID.current);
         flow &&
           flow.json &&
-          insertWorkflowToCanvas3(flow.json, [e.canvasX, e.canvasY]);
+          insertWorkflowToCanvas(flow.json, [e.canvasX, e.canvasY]);
       }
     };
 
@@ -211,8 +208,8 @@ export default function RecentFilesDrawer({ onClose, onClickNewFlow }: Props) {
         <Card
           width={DRAWER_WIDTH}
           height={"100vh"}
-          pl={4}
-          pr={5}
+          pl={2}
+          pr={2}
           pt={4}
           gap={4}
           position={"absolute"}
@@ -226,7 +223,7 @@ export default function RecentFilesDrawer({ onClose, onClickNewFlow }: Props) {
             <HStack gap={4}>
               <HStack gap={2}>
                 <Text fontSize={19} fontWeight={600}>
-                  ☕️Workspace
+                  🦄Workspace
                 </Text>
                 {/* <Tooltip label="Login to share and sync your workflows to cloud">
                   <Link onClick={openCognitoPopup}>Login</Link>
