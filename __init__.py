@@ -127,19 +127,32 @@ async def get_system_dir(request):
         return web.Response(text=json.dumps({"error": str(e)}), status=500)
 
 
+import json
+import os
+
 def get_my_workflows_dir():
     data = read_table('userSettings')
-    if (data):
-        records = json.loads(data)
+    if data:
+        try:
+            # Attempt to parse the JSON data
+            records = json.loads(data)
+        except json.JSONDecodeError:
+            # If there's a JSONDecodeError, handle it gracefully
+            print("Error parsing JSON from userSettings. Using default workflows directory.")
+            records = {}
 
-        if DEFAULT_USER in records and 'myWorkflowsDir' in records[DEFAULT_USER]:  
-            curDir = records[DEFAULT_USER]['myWorkflowsDir']  
-        elif 'myWorkflowsDir' in records:  
+        # Check if 'myWorkflowsDir' is specified and valid
+        if DEFAULT_USER in records and 'myWorkflowsDir' in records[DEFAULT_USER]:
+            curDir = records[DEFAULT_USER]['myWorkflowsDir']
+        elif 'myWorkflowsDir' in records:
             curDir = records['myWorkflowsDir']
-        
+        else:
+            curDir = None
+
         if curDir:
             return curDir
-        
+
+    # Return the default directory if the data is not available or JSON parsing fails
     return os.path.join(comfy_path, 'my_workflows')
 
 
