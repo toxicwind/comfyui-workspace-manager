@@ -1,4 +1,4 @@
-import { Checkbox, Stack } from "@chakra-ui/react";
+import { Checkbox, Stack, useToast } from "@chakra-ui/react";
 import { useState, useEffect } from "react";
 import { userSettingsTable } from "../db-tables/WorkspaceDB";
 import { UserSettings } from "../types/dbTypes";
@@ -15,6 +15,7 @@ export default function CommonCheckboxSettings({
   defaultChecked = false,
 }: Props) {
   const [checked, setChecked] = useState(defaultChecked);
+  const toast = useToast();
 
   const getSetting = () => {
     userSettingsTable?.getSetting(settingKey).then((res) => {
@@ -33,6 +34,12 @@ export default function CommonCheckboxSettings({
         onChange={async (e) => {
           await userSettingsTable?.upsert({ [settingKey]: e.target.checked });
           getSetting();
+          toast({
+            title: "Setting saved. Please refresh to see the changes.",
+            status: "success",
+            duration: 3000,
+            isClosable: true,
+          });
         }}
       >
         {text}

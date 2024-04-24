@@ -12,7 +12,6 @@ import {
   Box,
   Flex,
   Tooltip,
-  Switch,
 } from "@chakra-ui/react";
 import { useEffect, useState, useRef, useCallback, useContext } from "react";
 import {
@@ -51,7 +50,6 @@ export default function RecentFilesDrawer({ onClose, onClickNewFlow }: Props) {
   const [currentRenderingData, setCurrentRenderingData] = useState<
     Array<Folder | Workflow>
   >([]);
-  const aloneFlowsAndFoldersRef = useRef<Array<Folder | Workflow>>([]);
   const allFlowsRef = useRef<Array<Workflow>>([]);
   const { loadWorkflowID, curFlowID } = useContext(WorkspaceContext);
   const [selectedTag, setSelectedTag] = useState<string>();
@@ -68,39 +66,33 @@ export default function RecentFilesDrawer({ onClose, onClickNewFlow }: Props) {
     (window.localStorage.getItem(sortTypeLocalStorageKey) as ESortTypes) ??
       ESortTypes.RECENTLY_MODIFIED,
   );
+  const isFilter = !!selectedTag || !!debounceSearchValue.length;
 
   const loadLatestWorkflows = async () => {
-    aloneFlowsAndFoldersRef.current =
-      (await workflowsTable?.listFolderContent()) ?? [];
-    allFlowsRef.current = (await workflowsTable?.listAll()) ?? [];
-    filterFlows();
+    const curFolderContent = (await workflowsTable?.listFolderContent()) ?? [];
+    setCurrentRenderingData(
+      sortFileItem(curFolderContent, sortTypeRef.current),
+    );
     setRefreshFolderStamp(Date.now());
+    allFlowsRef.current = (await workflowsTable?.listAll()) ?? [];
   };
 
-  const isFilter = !!selectedTag || !!debounceSearchValue;
-
   const filterFlows = () => {
-    if (isFilter) {
-      const filterResult = allFlowsRef.current.filter((flow) => {
-        let tagFlag = true;
-        let keywordFlag = true;
-        if (selectedTag) {
-          tagFlag = !!flow.tags?.includes(selectedTag);
-        }
-        if (debounceSearchValue) {
-          keywordFlag = !!flow.name
-            .toLocaleLowerCase()
-            .includes(debounceSearchValue.toLocaleLowerCase());
-        }
+    const filterResult = allFlowsRef.current.filter((flow) => {
+      let tagFlag = true;
+      let keywordFlag = true;
+      if (selectedTag) {
+        tagFlag = !!flow.tags?.includes(selectedTag);
+      }
+      if (debounceSearchValue) {
+        keywordFlag = !!flow.name
+          .toLocaleLowerCase()
+          .includes(debounceSearchValue.toLocaleLowerCase());
+      }
 
-        return tagFlag && keywordFlag;
-      });
-      setCurrentRenderingData(sortFileItem(filterResult, sortTypeRef.current));
-    } else {
-      setCurrentRenderingData(
-        sortFileItem(aloneFlowsAndFoldersRef.current, sortTypeRef.current),
-      );
-    }
+      return tagFlag && keywordFlag;
+    });
+    setCurrentRenderingData(sortFileItem(filterResult, sortTypeRef.current));
   };
 
   const onSort = (type: ESortTypes) => {
@@ -111,7 +103,11 @@ export default function RecentFilesDrawer({ onClose, onClickNewFlow }: Props) {
   };
 
   useEffect(() => {
-    filterFlows();
+    if (isFilter) {
+      filterFlows();
+    } else {
+      loadLatestWorkflows();
+    }
   }, [debounceSearchValue, selectedTag]);
 
   const onDelete = useCallback(
@@ -126,7 +122,6 @@ export default function RecentFilesDrawer({ onClose, onClickNewFlow }: Props) {
   );
 
   useEffect(() => {
-    loadLatestWorkflows();
     const handleDrop = async (e: { canvasX: number; canvasY: number }) => {
       if (draggingWorkflowID.current) {
         const flow = await workflowsTable?.get(draggingWorkflowID.current);
@@ -263,22 +258,18 @@ export default function RecentFilesDrawer({ onClose, onClickNewFlow }: Props) {
             />
             <HStack mb={2} mt={2} p={0} justifyContent="space-between">
               <HStack>
-                {allFlowsRef.current.length > 0 ? (
-                  <MultipleSelectionOperation
-                    multipleState={multipleState}
-                    changeMultipleState={(state) => {
-                      setMultipleState(state);
-                      !state && setSelectedKeys([]);
-                    }}
-                    selectedKeys={selectedKeys}
-                    isSelectedAll={
-                      selectedKeys.length === allFlowsRef.current.length
-                    }
-                    batchOperationCallback={batchOperationCallback}
-                  />
-                ) : (
-                  <Box />
-                )}
+                <MultipleSelectionOperation
+                  multipleState={multipleState}
+                  changeMultipleState={(state) => {
+                    setMultipleState(state);
+                    !state && setSelectedKeys([]);
+                  }}
+                  selectedKeys={selectedKeys}
+                  isSelectedAll={
+                    selectedKeys.length === allFlowsRef.current.length
+                  }
+                  batchOperationCallback={batchOperationCallback}
+                />
                 {!multipleState && (
                   <Tooltip hasArrow label="New folder" placement="bottom-start">
                     <IconButton
@@ -315,7 +306,12 @@ export default function RecentFilesDrawer({ onClose, onClickNewFlow }: Props) {
                     type="radio"
                     onChange={(type) => onSort(type as ESortTypes)}
                   >
-                    {Object.values(ESortTypes).map((sortType, index) => (
+                    {[
+                      ESortTypes.RECENTLY_MODIFIED,
+                      ESortTypes.OLDEST_MODIFIED,
+                      ESortTypes.AZ,
+                      ESortTypes.ZA,
+                    ].map((sortType, index) => (
                       <MenuItemOption key={index} value={sortType}>
                         {sortType}
                       </MenuItemOption>
@@ -328,7 +324,16 @@ export default function RecentFilesDrawer({ onClose, onClickNewFlow }: Props) {
               searchValue={searchValue}
               onUpdateSearchValue={onUpdateSearchValue}
             />
-            <Flex overflowY={"auto"} overflowX={"hidden"} direction="column">
+            <Flex
+              overflowY={"auto"}
+              overflowX={"hidden"}
+              direction="column"
+              style={{
+                overflowY: "scroll",
+                scrollbarWidth: "none", // For Firefox
+                msOverflowStyle: "none", // For Internet Explorer and Edge
+              }}
+            >
               <ItemsList items={currentRenderingData} />
             </Flex>
           </Flex>

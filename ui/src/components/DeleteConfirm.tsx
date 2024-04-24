@@ -31,7 +31,7 @@ export default function DeleteConfirm(props: Props) {
   } = props;
 
   return (
-    <Popover isLazy={true} placement="auto">
+    <Popover isLazy={true} placement="auto" gutter={0}>
       {({ onClose }) => (
         <>
           <PopoverTrigger>
@@ -40,7 +40,7 @@ export default function DeleteConfirm(props: Props) {
                 <IconButton
                   aria-label="Delete confirm"
                   size={"sm"}
-                  icon={<IconTrash color="#F56565" />}
+                  icon={<IconTrash color="#F56565" size={"20px"} />}
                   isDisabled={isDisabled}
                   variant={variant}
                 />
@@ -48,7 +48,6 @@ export default function DeleteConfirm(props: Props) {
             </Box>
           </PopoverTrigger>
           <PopoverContent>
-            <PopoverArrow />
             <PopoverCloseButton onClick={onClose} />
             <PopoverBody>
               <Text mb={4} pr={4} fontWeight={600}>

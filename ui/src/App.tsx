@@ -26,7 +26,6 @@ import {
   getWorkflowIdInUrlHash,
   generateUrlHashWithFlowId,
   openWorkflowInNewTab,
-  validateOrSaveAllJsonFileMyWorkflows,
 } from "./utils";
 import { Topbar } from "./topbar/Topbar";
 import { Workflow, WorkflowVersion } from "./types/dbTypes";
@@ -39,23 +38,12 @@ const GalleryModal = React.lazy(() => import("./gallery/GalleryModal"));
 import { IconExternalLink } from "@tabler/icons-react";
 import { DRAWER_Z_INDEX, UPGRADE_TO_2WAY_SYNC_KEY } from "./const";
 import ServerEventListener from "./model-manager/hooks/ServerEventListener";
-import { v4 } from "uuid";
+import { nanoid } from "nanoid";
 import { WorkspaceRoute } from "./types/types";
 import { useStateRef } from "./customHooks/useStateRef";
 import { indexdb } from "./db-tables/indexdb";
 import EnableTwowaySyncConfirm from "./settings/EnableTwowaySyncConfirm";
 import { deepJsonDiffCheck } from "./utils/deepJsonDiffCheck";
-const AppIsDirtyEventListener = React.lazy(
-  () => import("./topbar/AppIsDirtyEventListener"),
-);
-
-const usedWsEvents = [
-  // InstallProgress.tsx
-  "download_progress",
-  "download_error",
-  // useUpdateModels.ts
-  "model_list",
-];
 
 export default function App() {
   const [curFlowName, setCurFlowName] = useState<string | null>(null);
@@ -71,9 +59,9 @@ export default function App() {
   const developmentEnvLoadFirst = useRef(false);
   const toast = useToast();
   const [curVersion, setCurVersion] = useStateRef<WorkflowVersion | null>(null);
-  const saveCurWorkflow = useCallback(async () => {
+  const saveCurWorkflow = useCallback(async (force = false) => {
     if (curFlowID.current) {
-      if (workflowsTable?.curWorkflow?.saveLock) {
+      if (!force && workflowsTable?.curWorkflow?.saveLock) {
         toast({
           title: "The workflow is locked and cannot be saved",
           status: "warning",
@@ -92,7 +80,7 @@ export default function App() {
           isAutoSave: false,
         }),
       ]);
-      userSettingsTable?.autoSave &&
+      userSettingsTable?.settings?.autoSave &&
         toast({
           title: "Saved",
           status: "success",
@@ -102,21 +90,9 @@ export default function App() {
       setIsDirty(false);
     }
   }, []);
-  const deleteCurWorkflow = async () => {
-    if (curFlowID.current) {
-      const userInput = confirm(
-        "Are you sure you want to delete this workflow?",
-      );
-      if (userInput) {
-        // User clicked OK
-        await workflowsTable?.delete(curFlowID.current);
-        setCurFlowIDAndName(null);
-      }
-    }
-  };
 
   const discardUnsavedChanges = async () => {
-    if (userSettingsTable?.autoSave) {
+    if (userSettingsTable?.settings?.autoSave) {
       alert("You cannot discard unsaved changes when auto save is enabled");
       return;
     }
@@ -163,10 +139,12 @@ export default function App() {
       localStorage.setItem("curFlowID", id);
       document.title = "ComfyUI - " + workflow!.name;
     }
+    if (workflow) {
+      workflowsTable?.updateLastOpenedTime(workflow.id);
+    }
   };
 
   const graphAppSetup = async () => {
-    subsribeToWsToStopWarning();
     localStorage.removeItem("workspace");
     localStorage.removeItem("comfyspace");
     try {
@@ -184,7 +162,7 @@ export default function App() {
     if (latestWfID) {
       loadWorkflowIDImpl(latestWfID);
     }
-    await validateOrSaveAllJsonFileMyWorkflows();
+    fetch("/workspace/deduplicate_workflow_ids");
     const twoway = await userSettingsTable?.getSetting("twoWaySync");
     !twoway &&
       indexdb.cache.get(UPGRADE_TO_2WAY_SYNC_KEY).then(async (value) => {
@@ -227,12 +205,6 @@ export default function App() {
           );
         }
       });
-  };
-
-  const subsribeToWsToStopWarning = () => {
-    usedWsEvents.forEach((event) => {
-      api.addEventListener(event, () => null);
-    });
   };
 
   const checkIsDirty = () => {
@@ -294,11 +266,11 @@ export default function App() {
       app.graph.clear();
       return;
     }
-
     if (
       !isDirty ||
       forceLoad ||
-      (await userSettingsTable?.getSetting("autoSave"))
+      userSettingsTable?.settings?.autoSave ||
+      workflowsTable?.curWorkflow == null
     ) {
       loadWorkflowIDImpl(id, versionID);
       return;
@@ -326,24 +298,13 @@ export default function App() {
         },
       },
     ];
-    if (workflowsTable?.curWorkflow?.lastSavedJson != null) {
-      buttons.push({
-        label: "Discard",
-        colorScheme: "red",
-        onClick: async () => {
-          newIDToLoad && loadWorkflowIDImpl(newIDToLoad);
-        },
-      });
-    } else {
-      buttons.push({
-        label: "Delete",
-        colorScheme: "red",
-        onClick: async () => {
-          await deleteCurWorkflow();
-          newIDToLoad && loadWorkflowIDImpl(newIDToLoad);
-        },
-      });
-    }
+    buttons.push({
+      label: "Discard",
+      colorScheme: "red",
+      onClick: async () => {
+        newIDToLoad && loadWorkflowIDImpl(newIDToLoad);
+      },
+    });
     showDialog(
       `Please save or discard your changes to "${workflowsTable?.curWorkflow?.name}" before leaving, or your changes will be lost.`,
       buttons,
@@ -389,7 +350,6 @@ export default function App() {
     }
     const flow = await workflowsTable?.createFlow({
       json: workflow.json,
-      lastSavedJson: workflow.lastSavedJson,
       name: newFlowName || workflow.name,
       parentFolderID: workflow.parentFolderID,
       tags: workflow.tags,
@@ -436,7 +396,7 @@ export default function App() {
     const fileInputListener = async () => {
       if (fileInput && fileInput.files && fileInput.files.length > 0) {
         const newFlow: Workflow = {
-          id: v4(),
+          id: nanoid(),
           name: fileInput.files[0].name,
           json: JSON.stringify(defaultGraph),
           updateTime: Date.now(),
@@ -449,7 +409,7 @@ export default function App() {
     fileInput?.addEventListener("change", fileInputListener);
 
     const handleBeforeUnload = (e: BeforeUnloadEvent) => {
-      const autoSaveEnabled = userSettingsTable?.autoSave ?? true;
+      const autoSaveEnabled = userSettingsTable?.settings?.autoSave ?? true;
       if (workflowsTable?.curWorkflow?.saveLock) return;
       const isDirty = checkIsDirty();
 
@@ -491,7 +451,7 @@ export default function App() {
         )) ?? false;
       if (!overwriteFlow && fileName) {
         const newFlow: Workflow = {
-          id: v4(),
+          id: nanoid(),
           name: fileName,
           json: JSON.stringify(defaultGraph),
           updateTime: Date.now(),
@@ -564,7 +524,6 @@ export default function App() {
             )}
           </Box>
           <ServerEventListener />
-          <AppIsDirtyEventListener />
         </Portal>
       </div>
     </WorkspaceContext.Provider>

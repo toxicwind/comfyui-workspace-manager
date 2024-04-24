@@ -10,7 +10,14 @@ import {
   IconLock,
 } from "@tabler/icons-react";
 import DropdownTitle from "../components/DropdownTitle";
-import { lazy, useCallback, useContext, useEffect, useState } from "react";
+import {
+  Suspense,
+  lazy,
+  useCallback,
+  useContext,
+  useEffect,
+  useState,
+} from "react";
 import EditFlowName from "../components/EditFlowName";
 import { WorkspaceContext } from "../WorkspaceContext";
 import { PanelPosition } from "../types/dbTypes";
@@ -19,17 +26,25 @@ import { SharedTopbarButton } from "../share/SharedTopbarButton";
 import VersionNameTopbar from "./VersionNameTopbar";
 import { userSettingsTable, workflowsTable } from "../db-tables/WorkspaceDB";
 import { TOPBAR_BUTTON_HEIGHT } from "../const";
+const AppIsDirtyEventListener = lazy(() => import("./AppIsDirtyEventListener"));
 const ModelManagerTopbar = lazy(
   () => import("../model-manager/topbar/ModelManagerTopbar"),
 );
+const SpotlightSearch = lazy(() => import("../components/SpotlightSearch"));
 
 interface Props {
   curFlowName: string | null;
   setCurFlowName: (newName: string) => void;
 }
 export function Topbar({ curFlowName, setCurFlowName }: Props) {
-  const { isDirty, loadNewWorkflow, saveCurWorkflow, setRoute, curFlowID } =
-    useContext(WorkspaceContext);
+  const {
+    isDirty,
+    loadNewWorkflow,
+    saveCurWorkflow,
+    setRoute,
+    curFlowID,
+    route,
+  } = useContext(WorkspaceContext);
   const [positionStyle, setPositionStyle] = useState<PanelPosition>();
   const updatePanelPosition: (
     position?: PanelPosition,
@@ -88,6 +103,7 @@ export function Topbar({ curFlowName, setCurFlowName }: Props) {
         <Button
           size={"sm"}
           aria-label="workspace folder"
+          height={TOPBAR_BUTTON_HEIGHT + "px"}
           // backgroundColor={colorMode === "dark" ? "#333547" : undefined}
           onClick={() => setRoute("recentFlows")}
           px={2}
@@ -97,7 +113,9 @@ export function Topbar({ curFlowName, setCurFlowName }: Props) {
             <IconTriangleInvertedFilled size={8} />
           </HStack>
         </Button>
-        <ModelManagerTopbar />
+        <Suspense fallback={<div style={{ width: "60px" }} />}>
+          <ModelManagerTopbar />
+        </Suspense>
         <Tooltip label="New workflow">
           <Button
             size={"sm"}
@@ -106,12 +124,9 @@ export function Topbar({ curFlowName, setCurFlowName }: Props) {
             aria-label="new workflow"
             height={TOPBAR_BUTTON_HEIGHT + "px"}
             onClick={() => loadNewWorkflow()}
-            px={2}
-            py={2}
+            px={1}
           >
-            <HStack gap={0}>
-              <IconPlus size={16} color={"white"} />
-            </HStack>
+            <IconPlus size={16} color={"white"} />
           </Button>
         </Tooltip>
         <EditFlowName
@@ -144,8 +159,7 @@ export function Topbar({ curFlowName, setCurFlowName }: Props) {
         {curFlowID && isDirty ? (
           <Tooltip label="Save workflow">
             <IconButton
-              // style={{ width: 26 }}
-              onClick={saveCurWorkflow}
+              onClick={() => saveCurWorkflow()}
               icon={<IconDeviceFloppy size={23} color="white" />}
               size={"xs"}
               paddingY={4}
@@ -158,6 +172,7 @@ export function Topbar({ curFlowName, setCurFlowName }: Props) {
         )}
         <SharedTopbarButton />
         <VersionNameTopbar />
+        <AppIsDirtyEventListener />
         <IconGripVertical
           id="dragPanelIcon"
           className="dragPanelIcon"
@@ -165,6 +180,7 @@ export function Topbar({ curFlowName, setCurFlowName }: Props) {
           size={15}
           color="#FFF"
         />
+        {route === "spotlightSearch" && <SpotlightSearch />}
       </HStack>
     </Draggable>
   );

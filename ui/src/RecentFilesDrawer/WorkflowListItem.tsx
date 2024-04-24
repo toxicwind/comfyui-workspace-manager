@@ -5,18 +5,15 @@ import {
   Text,
   Checkbox,
   Flex,
-  Stack,
-  IconButton,
-  Tooltip,
 } from "@chakra-ui/react";
-import { IconExternalLink, IconLock } from "@tabler/icons-react";
-import { formatTimestamp, openWorkflowInNewTab } from "../utils";
-import { memo, ChangeEvent, useContext } from "react";
-import DeleteConfirm from "../components/DeleteConfirm";
+import { IconLock } from "@tabler/icons-react";
+import { formatTimestamp } from "../utils";
+import { memo, ChangeEvent, useContext, useState } from "react";
 import { RecentFilesContext, WorkspaceContext } from "../WorkspaceContext";
 import { Workflow } from "../types/dbTypes";
 import MediaPreview from "../components/MediaPreview";
-import MoreActionMenu from "./MoreActionMenu";
+import WorkflowListItemActionButtons from "./WorkflowListItemActionButtons";
+import { userSettingsTable } from "../db-tables/WorkspaceDB";
 
 type Props = {
   workflow: Workflow;
@@ -27,7 +24,6 @@ export default memo(function WorkflowListItem({ workflow }: Props) {
     setDraggingFile,
     isMultiSelecting,
     onMultiSelectFlow,
-    onDeleteFlow,
     multiSelectedFlowsID,
   } = useContext(RecentFilesContext);
   const isChecked =
@@ -37,7 +33,7 @@ export default memo(function WorkflowListItem({ workflow }: Props) {
   const { curFlowID, loadWorkflowID } = useContext(WorkspaceContext);
   const isSelected = curFlowID === workflow.id;
   const hoverBgColor = colorMode === "light" ? "gray.200" : "#4A5568";
-
+  const [isHovering, setIsHovering] = useState(false);
   const basicInfoComp = (
     <Box
       flexShrink={1}
@@ -48,7 +44,7 @@ export default memo(function WorkflowListItem({ workflow }: Props) {
       onDragStart={() => setDraggingFile?.(workflow)}
       borderRadius={6}
       px={1}
-      py={"3px"}
+      py={"5px"}
       onClick={() => {
         !isMultiSelecting && loadWorkflowID(workflow.id);
       }}
@@ -56,42 +52,47 @@ export default memo(function WorkflowListItem({ workflow }: Props) {
         bg: hoverBgColor,
       }}
     >
-      <HStack>
-        {(workflow.coverMediaPath?.length || workflow.latestImage?.length) && (
-          <MediaPreview
-            mediaLocalPath={
-              workflow.coverMediaPath ?? workflow.latestImage ?? ""
-            }
-            size={60}
-            hideBrokenImage
-            isPreview
-          />
-        )}
+      <HStack flexGrow={1}>
+        {!userSettingsTable?.settings?.hideCoverImage &&
+          (workflow.coverMediaPath?.length || workflow.latestImage?.length) && (
+            <MediaPreview
+              mediaLocalPath={
+                workflow.coverMediaPath ?? workflow.latestImage ?? ""
+              }
+              size={60}
+              hideBrokenImage
+              isPreview
+            />
+          )}
 
-        <Stack textAlign={"left"} gap={0}>
+        <Box
+          textAlign={"left"}
+          gap={0}
+          justifyContent={"space-between"}
+          flexGrow={1}
+        >
           <Flex alignItems={"center"}>
-            <Text
-              fontWeight={"500"}
-              noOfLines={2}
-              style={{ display: "inline-block" }}
-            >
+            <Text fontWeight={"500"} noOfLines={1} wordBreak={"break-all"}>
               {workflow.name ?? "untitled"}
             </Text>
             {workflow.saveLock && (
               <IconLock size={18} style={{ display: "inline-block" }} />
             )}
           </Flex>
-
-          <Text color={"GrayText"} ml={2} fontSize={"sm"}>
-            Updated: {formatTimestamp(workflow.updateTime)}
-          </Text>
-        </Stack>
+        </Box>
       </HStack>
     </Box>
   );
 
   return (
-    <HStack w={"100%"} mb={1} justify={"space-between"}>
+    <HStack
+      w={"100%"}
+      justify={"space-between"}
+      borderBottom={"1px solid"}
+      borderColor={colorMode == "dark" ? "gray.900" : "gray.200"}
+      onMouseEnter={() => setIsHovering(true)}
+      onMouseLeave={() => setIsHovering(false)}
+    >
       {isMultiSelecting ? (
         <Checkbox
           isChecked={isChecked}
@@ -106,25 +107,15 @@ export default memo(function WorkflowListItem({ workflow }: Props) {
       ) : (
         <>
           {basicInfoComp}
-          <Flex width={"90px"} justifyContent={"flex-end"}>
-            <Tooltip label="Open in new tab">
-              <IconButton
-                aria-label="Open in new tab"
-                size={"sm"}
-                variant="ghost"
-                onClick={() => openWorkflowInNewTab(workflow.id)}
-                icon={<IconExternalLink color={"#718096"} size={23} />}
-              />
-            </Tooltip>
-
-            <DeleteConfirm
-              promptMessage="Are you sure you want to delete this workflow?"
-              onDelete={() => {
-                onDeleteFlow && onDeleteFlow(workflow.id);
-              }}
-            />
-            <MoreActionMenu workflow={workflow} />
-          </Flex>
+          <Box width={"fit-content"}>
+            {isHovering ? (
+              <WorkflowListItemActionButtons workflow={workflow} />
+            ) : (
+              <Text color={"GrayText"} fontSize={"sm"}>
+                {formatTimestamp(workflow.updateTime, false, false, "/")}
+              </Text>
+            )}
+          </Box>
         </>
       )}
     </HStack>

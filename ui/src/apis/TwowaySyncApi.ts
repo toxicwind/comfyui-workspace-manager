@@ -98,10 +98,10 @@ export namespace TwowaySyncAPI {
   export async function saveWorkflow(workflow: Workflow) {
     const json = workflow.json;
     const flow = JSON.parse(json);
-    flow.extra[COMFYSPACE_TRACKING_FIELD_NAME] = {
-      id: workflow.id,
-    };
-
+    if (flow.extra[COMFYSPACE_TRACKING_FIELD_NAME] == null) {
+      flow.extra[COMFYSPACE_TRACKING_FIELD_NAME] = {};
+    }
+    flow.extra[COMFYSPACE_TRACKING_FIELD_NAME].id = workflow.id;
     const response = await fetch("/workspace/file/save", {
       method: "POST",
       headers: {
@@ -149,21 +149,19 @@ export namespace TwowaySyncAPI {
     id,
   }: Workflow) {
     let jsonObj: any = JSON.parse(json);
-
-    jsonObj = {
-      ...jsonObj,
-      extra: {
-        [COMFYSPACE_TRACKING_FIELD_NAME]: {
-          id: id,
-        },
-      },
-    };
+    if (jsonObj.extra == null) {
+      jsonObj.extra = {};
+    }
+    if (jsonObj.extra[COMFYSPACE_TRACKING_FIELD_NAME] == null) {
+      jsonObj.extra[COMFYSPACE_TRACKING_FIELD_NAME] = {};
+    }
+    jsonObj.extra[COMFYSPACE_TRACKING_FIELD_NAME].id = id; // to avoid overwriting deps
     const input: { parentFolderPath: string; name: string; json: string } = {
       parentFolderPath: sanitizeRelPath(parentFolderID ?? ""),
       name: name,
       json: JSON.stringify(jsonObj),
     };
-    console.log("createWorkflow", input);
+
     try {
       const response = await fetch("/workspace/create_workflow_file", {
         method: "POST",
@@ -239,6 +237,7 @@ export type ScanLocalFile = {
   json: string;
   createTime: number;
   updateTime: number;
+  lastOpenedTime?: number;
 };
 export type ScanLocalFolder = {
   id: string;

@@ -46,6 +46,8 @@ const ShareDialog = lazy(() => import("../share/ShareDialog"));
 // @ts-ignore
 import { app } from "/scripts/app.js";
 import { TOPBAR_BUTTON_HEIGHT } from "../const";
+import DownloadSpaceJsonDialog from "../spacejson/DownloadSpaceJsonDialog";
+import { downloadJsonFile } from "../utils/downloadJsonFile";
 
 export default function DropdownTitle() {
   const {
@@ -65,7 +67,6 @@ export default function DropdownTitle() {
     save: "",
     saveAs: "",
   });
-  const [isShareOpen, setIsShareOpen] = useState(false);
 
   useEffect(() => {
     if (curFlowID) {
@@ -93,7 +94,6 @@ export default function DropdownTitle() {
     const graph = JSON.stringify(app.graph.serialize());
     const flow = await workflowsTable?.createFlow({
       json: graph,
-      lastSavedJson: graph,
       name: newFlowName,
       parentFolderID: workflow?.parentFolderID,
     });
@@ -113,24 +113,10 @@ export default function DropdownTitle() {
       return;
     }
     const graph = app.graph.serialize();
-    const json = JSON.stringify(graph);
-    const blob = new Blob([json], { type: "application/json" });
-    const url = URL.createObjectURL(blob);
+    const json = JSON.stringify(graph, null, 2);
 
-    const a = document.createElement("a");
-    a.href = url;
-    a.download = `${curWorkflow.name}.json`;
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
-    URL.revokeObjectURL(url);
+    downloadJsonFile(json, curWorkflow.name);
   }, [curFlowID]);
-
-  const handleDownloadSpaceJson = useCallback(async () => {
-    console.log("app.graph", app.graph);
-    const graph = app.graph.serialize();
-    console.log("graph serialize", graph);
-  }, []);
 
   return (
     <>
@@ -142,7 +128,6 @@ export default function DropdownTitle() {
               height={TOPBAR_BUTTON_HEIGHT + "px"}
               aria-label="menu"
               size={"sm"}
-              // backgroundColor={"#4a4d6b"}
               backgroundColor={"#434554"}
             >
               File
@@ -154,14 +139,14 @@ export default function DropdownTitle() {
           <Menu isOpen={true}>
             <MenuList minWidth={150} zIndex={1000}>
               <MenuItem
-                onClick={saveCurWorkflow}
+                onClick={() => saveCurWorkflow()}
                 icon={<IconDeviceFloppy size={20} />}
                 iconSpacing={1}
                 command={saveShortcut.save}
               >
                 Save
               </MenuItem>
-              {!userSettingsTable?.autoSave && (
+              {!userSettingsTable?.settings?.autoSave && (
                 <Tooltip label="Revert workflow to your last saved version. You will lose all changes made since your last save.">
                   <MenuItem
                     onClick={discardUnsavedChanges}
@@ -179,13 +164,6 @@ export default function DropdownTitle() {
               >
                 Download
               </MenuItem>
-              {/* <MenuItem
-                onClick={handleDownloadSpaceJson}
-                icon={<IconDownload size={20} />}
-                iconSpacing={1}
-              >
-                Download .space.json
-              </MenuItem> */}
               <MenuItem
                 onClick={() => setRoute("saveAsModal")}
                 icon={<IconDeviceFloppy size={20} />}
@@ -208,24 +186,32 @@ export default function DropdownTitle() {
               >
                 Versions History
               </MenuItem>
+              {/* <MenuItem
+                onClick={() => setRoute("downloadSpaceJson")}
+                icon={<IconDownload size={20} />}
+                iconSpacing={1}
+              >
+                Save runnable workflow🧪
+              </MenuItem> */}
               <MenuItem
-                onClick={() => setIsShareOpen(true)}
+                onClick={() => setRoute("share")}
                 icon={<IconShare2 size={20} />}
                 iconSpacing={1}
                 alignItems={"center"}
               >
                 <HStack>
-                  <p>Share</p> <Tag size={"sm"}>🧪🧪beta</Tag>
+                  <p>Share</p> <Tag size={"sm"}>🧪beta</Tag>
                 </HStack>
               </MenuItem>
             </MenuList>
           </Menu>
         }
       />
-      {isShareOpen && <ShareDialog onClose={() => setIsShareOpen(false)} />}
+      {route === "share" && <ShareDialog onClose={() => setRoute("root")} />}
       {route == "versionHistory" && (
         <VersionHistoryDrawer onClose={() => setRoute("root")} />
       )}
+      {route == "downloadSpaceJson" && <DownloadSpaceJsonDialog />}
       {route === "saveAsModal" && (
         <Modal isOpen={true} onClose={handleOnCloseModal}>
           <ModalOverlay />

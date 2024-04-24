@@ -16,6 +16,10 @@ export type CivitiModel = {
   type?: string;
   poi?: boolean;
   nsfw?: boolean;
+  images?: Array<{
+    nsfwLevel?: number;
+    url: string; //id only
+  }>;
   allowNoCredit?: boolean;
   allowCommercialUse?: string;
   allowDerivatives?: boolean;
@@ -135,3 +139,5 @@ export interface ModelsListRespItem {
   preview?: string;
   date: Date;
 }
+
+export type ModelsListRespItemFromApi = ModelsListRespItem & { date: number };
